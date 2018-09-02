@@ -1,0 +1,20 @@
+# Bochs 允许使用的内存大小（MB）
+megs: 32
+
+# 选择使用的 BIOS 版本
+romimage: file=/usr/share/bochs/BIOS-bochs-latest
+vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
+
+# 选择启动设备
+boot: disk
+
+# 日志文件输出
+log: bochs.log
+
+# 关闭鼠标，打开键盘
+mouse: enabled=0
+keyboard: keymap=/usr/share/bochs/keymaps/x11-pc-us.map
+
+# 硬盘设置
+ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
+ata0-master: type=disk, path="binaries/hd60M.img", mode=flat
