@@ -38,8 +38,8 @@ int 0x10
 
 ; 打印欢迎字符串
 ; 通过调用函数 print_string
-mov bx, prompt
-mov ax, prompt_len
+mov bx, success
+mov ax, success_len
 mov ch, blue_black_light
 xor dx, dx
 call print_string
@@ -52,30 +52,21 @@ mov cx, 1                       ; 这里先只读入 1 个扇区
 call read_disk_m_16
 
 
+; 打印读取成功字符串
+; 通过调用函数 print_string
+mov bx, disk
+mov ax, disk_len
+mov ch, blue_black_light
+mov dx, 160
+call print_string
+
+
 jmp loader_base_addr
 
 
 ; 函数定义区
-; 直接访问显存来打印欢迎字符串
-print_string:
-    ; 参数 bx = 字符串地址
-    ; 参数 ax = 字符串长度
-    ; 参数 ch = 字符属性
-    ; 参数 dx = 起始写入的相对位置
-    ; Pre: gs = 显存段地址 && 字符串长度 >= 1
-    xor si, si
-    mov di, dx
-    .write_byte:
-        mov cl, byte [bx+si]
-        mov byte [gs:di], cl        ; 写入字符本身
-        inc di
-        mov byte [gs:di], ch        ; 写入字符属性
-        inc di
-        inc si
-    cmp ax, si
-    jne .write_byte
-    ret
-    ; 没有返回值
+; 打印消息到屏幕
+%include "printer.inc"
 
 
 ; 读取硬盘的 n 个扇区（在 16 位模式下）
@@ -87,8 +78,8 @@ read_disk_m_16:
     mov di, cx      ; 备份 eax 和 cx
 
     ; (1) 设置读取的扇区数目
-    mov al, cl
     mov dx, 0x01f2
+    mov al, cl
     out dx, al
     ; 从 esi 中恢复 eax
     mov eax, esi
@@ -98,7 +89,7 @@ read_disk_m_16:
     mov dx, 0x01f3
     out dx, al
     ; LBA 15～8 位写入端口 1f4h
-    mov cl, 0
+    mov cl, 8
     shr eax, cl
     mov dx, 0x01f4
     out dx, al
@@ -142,12 +133,11 @@ read_disk_m_16:
 
 
 ; 数据区
-prompt      db  "Hello, MBR World!"
-prompt_len  equ $ - prompt          ; 字符串的结尾不包含一个 0
+success     db  "MBR Successfully Loaded."
+success_len equ $ - success          ; 字符串的结尾不包含一个 0
 
-; 打印字符属性(K：闪烁，RGB：背景，I：亮度，RGB：前景)
-green_red_blink     equ 0b10100100  ; 绿底红字，闪烁
-blue_black_light    equ 0b00001001  ; 黑底蓝字，亮度加强
+disk        db  "Disk Visit Succeeded, Preparing Loader..."
+disk_len    equ $ - disk
 
 ; MBR 签名 0xaa55
 times (510 - ($ - $$)) db 0         ; 填充 0 直到 510 字节
