@@ -7,7 +7,7 @@ ASM		= nasm
 CXX		= g++
 CC		= gcc
 DD		= dd
-BOCHS	= bochs
+BOCHS	= ./tools/bochs-2.6.9/bin/bochs
 
 .PHONY: build run img clean clean-all refresh refresh-all prepare
 
