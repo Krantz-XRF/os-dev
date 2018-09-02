@@ -10,6 +10,10 @@ mov fs, ax
 
 mov sp, 0x7c00
 
+; 将 gs 寄存器设置为显存的地址
+mov ax, 0xb800
+mov gs, ax
+
 
 ; 清空屏幕，即上卷全部行
 ; int 0x10 : 0x06 上卷窗口
@@ -25,28 +29,55 @@ int 0x10
 ; int 0x10 : 0x03 查询光标位置
 mov ah, 3           ; ah = 0x03 功能号
 mov bh, 0           ; bh = 0 要查询的页号
-int 0x10            ; 返回值 (ch, cl) = 光标行区间，忽略
-                    ; 返回值 (dh, dl) = 光标行列坐标
+int 0x10
+; 返回值 (ch, cl) = 光标行区间，忽略
+; 返回值 (dh, dl) = 光标行列坐标
 
 
 ; 打印欢迎字符串
-; int 0x10 : 0x13 打印字符串到指定位置
-mov ax, prompt
-mov bp, ax          ; es:bp = 要打印的字符串
-mov cx, prompt_len  ; cx = 不包括结尾 0 的字符串长度
-mov ax, 0x1301      ; ax = (ah = 0x13 功能号, al = 0x01 显示字符串，光标随之移动)
-mov bx, 0x0002      ; bx = (bh = 0 页号, bl = 2 字符黑底绿字)
-int 0x10
+; 通过调用函数 print_string
+mov bx, prompt
+mov ax, prompt_len
+mov ch, blue_black_light
+xor dx, dx
+call print_string
 
 
 ; 程序自旋等待
 jmp $
 
 
+; 函数定义区
+; 直接访问显存来打印欢迎字符串
+print_string:
+    ; 参数 bx = 字符串地址
+    ; 参数 ax = 字符串长度
+    ; 参数 ch = 字符属性
+    ; 参数 dx = 起始写入的相对位置
+    ; Pre: gs = 显存段地址 && 字符串长度 >= 1
+    xor si, si
+    mov di, dx
+    write_byte:
+        mov cl, byte [bx+si]
+        mov byte [gs:di], cl        ; 写入字符本身
+        inc di
+        mov byte [gs:di], ch        ; 写入字符属性
+        inc di
+        inc si
+    cmp ax, si
+    jne write_byte
+    ret
+    ; 没有返回值
+
+
 ; 数据区
 prompt      db  "Hello, MBR World!"
-prompt_len  equ $ - prompt - 1      ; 这里的长度计算要减去结尾的 0
+prompt_len  equ $ - prompt          ; 字符串的结尾不包含一个 0
+
+; 打印字符属性(K：闪烁，RGB：背景，I：亮度，RGB：前景)
+green_red_blink     equ 0b10100100  ; 绿底红字，闪烁
+blue_black_light    equ 0b00001001  ; 黑底蓝字，亮度加强
 
 ; MBR 签名 0xaa55
-times (510 - ($ - $$)) db 0             ; 填充 0 直到 510 字节
+times (510 - ($ - $$)) db 0         ; 填充 0 直到 510 字节
 db 0x55, 0xaa
