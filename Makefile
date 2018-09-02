@@ -27,9 +27,14 @@ run: $(BIN)/hd60M.img
 	$(BOCHS) -f bochsrc
 
 # 磁盘映像文件
-$(BIN)/hd60M.img: $(BIN)/boot/mbr.bin
-	$(DD) if=$< of=$@ bs=512 count=1 conv=notrunc
+$(BIN)/hd60M.img: $(BIN)/boot/mbr.bin $(BIN)/boot/loader.bin
+	$(DD) if=$(BIN)/boot/mbr.bin of=$@ bs=512 count=1 conv=notrunc
+	$(DD) if=$(BIN)/boot/loader.bin of=$@ bs=512 count=1 seek=2 conv=notrunc
 
 # MBR
 $(BIN)/boot/mbr.bin: boot/mbr.S
-	$(ASM) $^ -o $@
+	$(ASM) $^ -o $@ -Iboot/
+
+# Loader
+$(BIN)/boot/loader.bin: boot/loader.S
+	$(ASM) $^ -o $@ -Iboot/
