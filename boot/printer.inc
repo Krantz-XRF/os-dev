@@ -1,6 +1,7 @@
 ; 公共函数
 ; 直接访问显存来打印欢迎字符串
-print_string:
+[bits 16]
+print_string_m_16:
     ; 参数 bx = 字符串地址
     ; 参数 ax = 字符串长度
     ; 参数 ch = 字符属性
