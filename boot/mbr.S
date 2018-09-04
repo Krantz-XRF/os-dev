@@ -42,13 +42,13 @@ mov bx, success
 mov ax, success_len
 mov ch, blue_black_light
 xor dx, dx
-call print_string
+call print_string_m_16
 
 
 ; 加载磁盘内容
 mov eax, loader_start_sector    ; 起始扇区 LBA 地址
 mov bx, loader_base_addr        ; 写入地址
-mov cx, 1                       ; 这里先只读入 1 个扇区
+mov cx, 4                       ; 这里先只读入 4 个扇区
 call read_disk_m_16
 
 
@@ -57,8 +57,8 @@ call read_disk_m_16
 mov bx, disk
 mov ax, disk_len
 mov ch, blue_black_light
-mov dx, 160
-call print_string
+mov dx, byte_per_line
+call print_string_m_16
 
 
 jmp loader_base_addr
