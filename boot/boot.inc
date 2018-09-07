@@ -59,3 +59,12 @@ rpl_2                   equ 2
 rpl_3                   equ 3
 ti_gdt                  equ 000b            ; TI 位（2），段描述符在 GDT 还是 LDT 中
 ti_idt                  equ 100b
+
+; 页表相关属性
+page_dir_table_pos      equ 0x10_0000
+
+pg_p        equ 1       ; 内存中是否存在
+pg_rw_r     equ 0b000   ; R/W：Read/Write 是否可写
+pg_rw_w     equ 0b010
+pg_us_s     equ 0b000   ; U/S：User/Supervisor 访问权限
+pg_us_u     equ 0b100

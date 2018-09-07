@@ -198,12 +198,90 @@ mov gs, ax
 mov byte [gs:byte_per_line * 6], 'P'
 
 
+; 准备开启分页
+; 创建页目录表，初始化页内存映射
+call setup_page
+
+; 更新 GDT 中的地址，使之指向内核的虚拟地址
+sgdt [gdt_ptr]
+mov ebx, [gdt_ptr + 2]  ; ebx = gdt_base_addr
+or  dword [ebx + 3 * 8 + 4], 0xc000_0000    ; 第 3 个描述符，高 4 字节
+add dword [gdt_ptr + 2], 0xc000_0000
+; 更新栈指针
+add esp, 0xc000_0000
+
+; 页目录地址赋值给 cr3
+mov eax, page_dir_table_pos
+mov cr3, eax
+
+; 打开 cr0 的 PG 位（31 位）
+mov eax, cr0
+or  eax, (1 << 31)
+mov cr0, eax
+
+; 重新加载 GDT
+lgdt [gdt_ptr]
+
+; 写入 V 指示成功开启分页，使用虚拟地址
+mov byte [gs:byte_per_line * 6 + 2], 'V'
+
+
 ; 在此自旋等待
 jmp $
 
 
 ; 函数定义区
 %include "printer.inc"
+
+
+[bits 32]
+; 创建页目录和页表
+setup_page:
+; 页目录占用的空间需要清空
+mov ecx, 4096
+mov esi, 0
+.clear_page_dir:
+    mov byte [page_dir_table_pos + esi], 0
+    inc esi
+loop .clear_page_dir
+
+; 创建页目录表项（PDE，Page Directory Entry）
+.create_pde:
+mov eax, page_dir_table_pos
+add eax, 0x1000     ; eax = 第一个页表的位置
+mov ebx, eax        ; 为 .create_pte 准备，ebx 为基址
+or  eax, pg_us_u | pg_rw_w | pg_p
+; 0xc000_0000~0xffff_ffff 的虚拟地址空间属于内核
+mov [page_dir_table_pos + 0x0], eax
+mov [page_dir_table_pos + 0xc00], eax
+; 0x0~0xbfff_ffff 的虚拟地址空间属于用户进程
+; 设置最后一个目录表项为目录表本身的位置
+sub eax, 0x1000     ; eax = 目录表本身的位置
+mov [page_dir_table_pos + 4092], eax
+
+; 下面创建页目录表项
+mov ecx, 256        ; 1M / (4k/页) = 256页
+mov esi, 0
+mov edx, pg_us_u | pg_rw_w | pg_p
+.create_pte:
+    mov [ebx + esi * 4], edx
+    add edx, 4096
+    inc esi
+loop .create_pte
+
+; 创建内核的其他页表的 PDE
+mov eax, page_dir_table_pos
+add eax, 0x2000
+or  eax, pg_us_u | pg_rw_w | pg_p
+mov ebx, page_dir_table_pos
+mov ecx, 254
+mov esi, 769
+.create_kernel_pde:
+    mov [ebx + esi * 4], eax
+    inc esi
+    add eax, 0x1000
+loop .create_kernel_pde
+ret
 
 
 ; 数据区
