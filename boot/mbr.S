@@ -61,7 +61,8 @@ mov dx, byte_per_line
 call print_string_m_16
 
 
-jmp loader_base_addr
+; 改为直接跳转到第一条指令处
+jmp loader_base_addr + 0x300
 
 
 ; 函数定义区

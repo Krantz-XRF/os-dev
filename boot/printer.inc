@@ -25,3 +25,5 @@ print_string_m_16:
 green_red_blink     equ 0b10100100  ; 绿底红字，闪烁
 blue_black_light    equ 0b00001001  ; 黑底蓝字，亮度加强
 cyan_black_light    equ 0b00001011  ; 黑底青色字，亮度加强
+green_black_light   equ 0b00001010  ; 黑底绿色字，亮度加强
+red_black_light     equ 0b00001100  ; 黑底红色字，亮度加强
