@@ -1,6 +1,8 @@
 .code16
 .include "boot.inc"
 .include "bits16/printer.inc"
+.include "bits32/printer.inc"
+.include "bits32/read_disk.inc"
 
 .global loader_start
 
@@ -59,7 +61,7 @@ loader_start:
 /* 通过调用函数 print_string */
 mov $prompt, %bx
 mov $prompt_len, %ax
-mov $cyan_black_light, %ch
+mov $blue_black_light, %ch
 mov $byte_per_line * 2, %dx
 call print_string_m_16
 
@@ -146,7 +148,7 @@ movw $1024, %cx     # (dx, ax) = ax * 1024
 mulw %cx
 shll $16, %edx      # edx = (dx, ax)
 orl %eax, %edx
-addl $0x100000, %edx # 补回最初的 1MB
+addl $0x100000, %edx    # 补回最初的 1MB
 jmp loader_start.mem_get_ok
 
 loader_start.error_halt: 
@@ -192,7 +194,7 @@ lgdt gdt_ptr
 # 报告 GDT 已经加载完成
 movw $gdt_msg, %bx
 movw $gdt_msg_len, %ax
-movb $cyan_black_light, %ch
+movb $blue_black_light, %ch
 movw $byte_per_line * 5, %dx
 call print_string_m_16
 
@@ -219,7 +221,18 @@ movl $loader_stack_top, %esp
 movw $selector_video, %ax
 movw %ax,%gs
 
-movb $'P, %gs:byte_per_line * 6
+# 报告已经进入保护模式
+movl $pmode_msg, %ebx
+movl $pmode_msg_len, %eax
+movb $default_color, %ch
+movl $byte_per_line * 6, %edx
+call print_string_m_32
+
+# 加载内核到内存指定位置
+mov $kernel_start_sector, %eax
+mov $kernel_base_addr, %ebx
+mov $200, %ecx
+call read_disk_m_32
 
 
 # 准备开启分页
@@ -246,12 +259,26 @@ movl %eax, %cr0
 # 重新加载 GDT
 lgdt gdt_ptr
 
-# 写入 V 指示成功开启分页，使用虚拟地址
-movb $'V, %gs : byte_per_line * 6 + 2
+
+# 报告已经成功开启分页，使用虚拟地址
+movl $vaddr_msg, %ebx
+movl $vaddr_msg_len, %eax
+movb $default_color, %ch
+movl $byte_per_line * 7, %edx
+call print_string_m_32
 
 /* 设置光标位置 */
-mov $0x0007, %bx
-call set_curser_m_16
+mov $0x0008, %bx
+call set_curser_m_32
+
+
+/* 再次刷新流水线 */
+ljmp $selector_code, $enter_kernel
+
+enter_kernel:
+call init_kernel
+mov $0xc009f000, %esp
+jmp kernel_entry_point
 
 
 .deadloop:
@@ -260,7 +287,7 @@ call set_curser_m_16
 
 /* 函数定义区 */
 .code32
-# 创建页目录和页表
+/* 创建页目录和页表 */
 setup_page: 
 # 页目录占用的空间需要清空
 movl $4096,%ecx
@@ -308,10 +335,53 @@ setup_page.create_kernel_pde:
 loop setup_page.create_kernel_pde
 ret
 
+/* 初始化内核 */
+init_kernel:
+xor %eax, %eax
+xor %ebx, %ebx
+xor %ecx, %ecx
+xor %edx, %edx
+
+mov kernel_base_addr + 42, %dx  # e_phentsize = Program Header 大小
+mov kernel_base_addr + 28, %ebx # e_phoff = Program Header 尺寸
+add $kernel_base_addr, %ebx     # 相对地址计算绝对地址
+mov kernel_base_addr + 44, %cx  # e_phnum = Program Header 总数量
+
+.each_segment:
+    cmp $pt_null, 0(%ebx)
+    je .ptnull
+        pushl 16(%ebx)      # p_filesz 作为函数参数 size :: Int
+        mov 4(%ebx), %eax   # p_offset
+        add $kernel_base_addr, %eax
+        pushl %eax          # 作为函数参数 src :: Addr
+        pushl 8(%ebx)       # p_vaddr 作为函数参数 dst :: Addr
+        call mem_copy
+        add $12, %esp       # 平衡栈
+    .ptnull:
+    add %edx, %ebx          # ebx += e_phentsize 指向下一个 section
+loop .each_segment
+ret
+
+/* 拷贝内存数据 */
+mem_copy:
+cld                 # 设置 movsb 时 esi 和 edi 都自动自增
+pushl %ebp
+mov %esp, %ebp
+push %ecx
+
+mov 8(%ebp), %edi   # edi = dst
+mov 12(%ebp), %esi  # esi = src
+mov 16(%ebp), %ecx  # ecx = size
+rep movsb           # 逐字节从 %ds : %esi 指示的地址复制到 %es : %edi 处
+
+pop %ecx
+pop %ebp
+ret
+
 
 /* 数据区 */
 prompt:
-    .ascii "Loader Successfully Loaded. Entering Real Mode..."
+    .ascii "Loader Successfully Loaded. Initialising..."
 prompt_end:
 prompt_len  = prompt_end - prompt
 
@@ -334,3 +404,13 @@ success:
     .ascii "Succeeded."
 success_end:
 success_len = success_end - success
+
+pmode_msg:
+    .ascii "Protected Mode Entered."
+pmode_msg_end:
+pmode_msg_len = pmode_msg_end - pmode_msg
+
+vaddr_msg:
+    .ascii "Using Virtual Address."
+vaddr_msg_end:
+vaddr_msg_len = vaddr_msg_end - vaddr_msg

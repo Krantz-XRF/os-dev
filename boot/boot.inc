@@ -1,6 +1,9 @@
 # 加载器、内核的地址信息
 loader_base_addr        = 0x900         # 启动代码加载的目标地址
-loader_start_sector     = 0x1           # LBA 地址：0 磁头 0 柱面 1 扇区
+loader_start_sector     = 0x1           # 加载器的 LBA 地址：0 磁头 0 柱面 1 扇区
+kernel_base_addr        = 0x70000       # 内核加载的目标地址
+kernel_start_sector     = 0x9           # 内核的 LBA 地址：0 磁头 0 柱面 9 扇区
+kernel_entry_point      = 0xc0001500    # 内核的虚拟地址
 
 # 显示设备参数
 byte_per_line           = 160           # 显示器每行字节数
@@ -68,3 +71,6 @@ pg_rw_r     = 0b000     # R/W：Read/Write 是否可写
 pg_rw_w     = 0b010
 pg_us_s     = 0b000     # U/S：User/Supervisor 访问权限
 pg_us_u     = 0b100
+
+# elf section 属性
+pt_null     = 0

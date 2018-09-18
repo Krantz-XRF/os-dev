@@ -5,7 +5,8 @@ cyan_black_light    = 0b00001011    # 黑底青字，亮度加强
 green_black_light   = 0b00001010    # 黑底绿字，亮度加强
 red_black_light     = 0b00001100    # 黑底红字，亮度加强
 white_black_light   = 0b00001111    # 黑底白字, 亮度加强
-default_color       = white_black_light
+white_black         = 0b00000111    # 黑底白字
+default_color       = white_black
 
 /* 函数向前引用声明 */
 .extern print_string_m_16
