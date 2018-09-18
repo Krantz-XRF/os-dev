@@ -2,3 +2,4 @@ bochs.log
 objects
 binaries
 tools
+.clang-format
