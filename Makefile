@@ -94,7 +94,9 @@ $(BIN)/boot/loader.bin: $(OBJ)/boot/loader.o $(OBJ)/boot/bits16/printer.o $(OBJ)
 	$(OBJCOPY) -O binary -j .text $@
 
 # Kernel
-$(OBJ)/kernel/main.o: kernel/main.cpp
-	$(CXX) $^ -o $@
-$(BIN)/kernel/kernel.bin: $(OBJ)/kernel/main.o
+$(OBJ)/kernel/print.o: kernel/print.cpp kernel/print.hpp kernel/common.hpp
+	$(CXX) $< -o $@
+$(OBJ)/kernel/main.o: kernel/main.cpp kernel/print.hpp
+	$(CXX) $< -o $@
+$(BIN)/kernel/kernel.bin: $(OBJ)/kernel/main.o $(OBJ)/kernel/print.o
 	$(LD) -m elf_i386 -e main -Ttext 0xc0001500 $^ -o $@
